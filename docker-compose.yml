@@ -1,0 +1,123 @@
+
+services:
+  api:
+    build:
+      context: ./saleor-api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started 
+    volumes:
+      - saleor-media:/app/media
+    environment:
+      - ALLOWED_HOSTS=localhost,api,dashboard
+      - DASHBOARD_URL=http://localhost:9000/
+      - JAEGER_AGENT_HOST=jaeger
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dashboard:
+    build:
+      context: ./saleor-dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db: 
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - saleor-db:/var/lib/postgresql/data
+      - ./replica_user.sql:/docker-entrypoint-initdb.d/replica_user.sql
+    environment:
+      - POSTGRES_DB=saleor
+      - POSTGRES_USER=saleor
+      - POSTGRES_PASSWORD=saleor
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "saleor"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - saleor-redis:/data
+    networks:
+      - saleor-backend-tier
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.20.0
+    platform: linux/amd64
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "9411:9411"
+    volumes:
+      - type: tmpfs
+        target: /tmp
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+
+  mailpit: 
+    image: axllent/mailpit
+    ports:
+      - 1025:1025 
+      - 8025:8025 
+    volumes:
+      - saleor-mailpit:/data 
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+
+volumes:
+  saleor-db:
+  saleor-redis:
+  saleor-media:
+  saleor-mailpit:
+
+networks:
+  saleor-backend-tier:
+    driver: bridge
+
+
+
