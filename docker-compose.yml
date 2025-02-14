@@ -4,6 +4,7 @@ services:
     build:
       context: ./saleor-api
       dockerfile: Dockerfile
+    container_name: saleor-api
     ports:
       - "8000:8000"
     depends_on:
@@ -17,37 +18,45 @@ services:
       - saleor-media:/app/media
     environment:
       - ALLOWED_HOSTS=localhost,api,dashboard
-      - DASHBOARD_URL=http://localhost:9000/
+      - API_URL=http://api:8000/
+      - DASHBOARD_URL=http://dashboard:80/
+      - DATABASE_URL=postgresql://saleor:saleor@db:5432/saleor
       - JAEGER_AGENT_HOST=jaeger
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
 
   dashboard:
     build:
       context: ./saleor-dashboard
       dockerfile: Dockerfile
+    container_name: saleor-dashboard
     ports:
-      - "9000:9000"
+      - "9000:80"
+    environment:
+      - API_URL=http://api:8000/
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - saleor-backend-tier
+    #command: ["nginx", "-g", "daemon off;"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
       interval: 30s
       timeout: 10s
       retries: 3
-
+      #start_period: 30s
+        
   db: 
     image: postgres:15-alpine
+    container_name: saleor-db
     ports:
       - "5432:5432"
     volumes:
@@ -61,13 +70,14 @@ services:
     networks:
       - saleor-backend-tier
     healthcheck:
-      test: ["CMD", "pg_isready", "-d", "saleor"]
+      test: ["CMD", "pg_isready", "-U", "saleor", "-d", "saleor"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   redis:
     image: redis:7.0-alpine
+    container_name: saleor-redis
     ports:
       - "6379:6379"
     volumes:
@@ -82,6 +92,7 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.20.0
+    container_name: saleor-jaeger
     platform: linux/amd64
     ports:
       - "5775:5775/udp"
@@ -100,6 +111,7 @@ services:
 
   mailpit: 
     image: axllent/mailpit
+    container_name: saleor-mailpit
     ports:
       - 1025:1025 
       - 8025:8025 
@@ -108,12 +120,26 @@ services:
     restart: unless-stopped
     networks:
       - saleor-backend-tier
+    depends_on:
+      api:
+        condition: service_healthy
+    #healthcheck:
+      #test: ["CMD", "curl", "-f", "http://localhost:1025/livez"]
+      #interval: 30s
+      #timeout: 10s
+      #retries: 5
+      #start_period: 30s
 
 volumes:
   saleor-db:
   saleor-redis:
-  saleor-media:
   saleor-mailpit:
+  saleor-media:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /tmp
 
 networks:
   saleor-backend-tier:

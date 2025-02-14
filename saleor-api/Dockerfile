@@ -1,6 +1,8 @@
-FROM python:3.12
+FROM python:3.12-slim 
 
 RUN apt-get update && apt-get install -y \
+    build-essential \  
+    gcc \        
     gettext \
     libffi8 \
     libgdk-pixbuf2.0-0 \
@@ -12,13 +14,14 @@ RUN apt-get update && apt-get install -y \
     shared-mime-info \
     mime-support \
     libpq5 \
-    && apt-get clean 
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN pip install poetry==1.8.4
-RUN poetry config virtualenvs.create false
+RUN pip install poetry==1.8.4 --no-cache-dir \
+    && poetry config virtualenvs.create false
+#RUN poetry config virtualenvs.create false
 WORKDIR /app
 COPY pyproject.toml poetry.lock ./ 
-RUN poetry install --no-root
+RUN poetry install --no-root --no-cache --no-interaction
 
 COPY . .
 
@@ -32,5 +35,4 @@ RUN SECRET_KEY=dummy STATIC_URL=${STATIC_URL} python3 manage.py collectstatic --
 
 EXPOSE 8000
 
-USER saleor
 CMD ["gunicorn", "--bind", ":8000", "--workers", "4", "--worker-class", "saleor.asgi.gunicorn_worker.UvicornWorker", "saleor.asgi:application"]
