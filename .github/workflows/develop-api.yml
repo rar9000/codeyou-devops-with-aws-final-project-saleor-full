@@ -55,7 +55,7 @@ jobs:
         run: docker stop saleor-api-test && docker rm saleor-api-test
 
       - name: Scan Image with Trivy for Security Vulnerabilities
-        uses: aquasecurity/trivy-action@latest
+        uses: aquasecurity/trivy-action@0.15.0
         with:
           image-ref: "saleor-api:develop"
           exit-code: 0  
