@@ -18,9 +18,6 @@ jobs:
       - name: Start Docker Compose Services
         run: docker compose up -d --wait
 
-      - name: Check Health of Services
-        run: docker-compose ps | grep "(healthy)"
-
       - name: Stop Docker Compose
         if: always()
         run: docker compose down
