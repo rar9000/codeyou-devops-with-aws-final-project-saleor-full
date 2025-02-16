@@ -1,11 +1,11 @@
-name: Production Saleor-API Pipeline
+name: Production Saleor-Dashboard Pipeline
 
 on:
   push:
     branches:
        - production
     paths:
-      - 'saleor-api/**'
+      - 'saleor-dashboard/**'
 
 jobs:
   staging:
@@ -22,13 +22,13 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/saleor-api:production -f saleor-api/Dockerfile saleor-api
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/saleor-dashboard:production -f saleor-dashboard/Dockerfile saleor-dashboard
 
       - name: Tag Docker Image as Latest
-        run: docker tag ${{ secrets.DOCKER_USERNAME }}/saleor:production ${{ secrets.DOCKER_USERNAME }}/saleor-api:latest
+        run: docker tag ${{ secrets.DOCKER_USERNAME }}/saleor-dashboard:production ${{ secrets.DOCKER_USERNAME }}/saleor-dashboard:latest
 
       - name: Push Production Tag to DockerHub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/saleor-api:production
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/saleor-dashboard:production
 
       - name: Push Latest Tag to DockerHub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/saleor-api:latest
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/saleor-dashboard:latest
