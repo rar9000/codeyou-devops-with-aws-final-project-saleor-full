@@ -18,8 +18,8 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install poetry==1.8.4 --no-cache-dir \
     && poetry config virtualenvs.create false
-#RUN poetry config virtualenvs.create false
-WORKDIR /app
+
+    WORKDIR /app
 COPY pyproject.toml poetry.lock ./ 
 RUN poetry install --no-root --no-cache --no-interaction
 
